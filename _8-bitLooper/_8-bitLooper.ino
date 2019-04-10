@@ -2,20 +2,20 @@
 
 const byte fixtureCount = 1;
 const byte channelCount = 3;
-const unsigned int totalDMX = (fixtureCount * channelCount * 2) + 1;
+const unsigned int totalDMX = (fixtureCount * channelCount) + 1;
 const byte frameRate = 44;
 const unsigned int frameInterval = 1000 / frameRate;
 float dmxVals[totalDMX];
 float currentVals[fixtureCount][channelCount];
-unsigned int targetVals[fixtureCount][channelCount];
+byte targetVals[fixtureCount][channelCount];
 float differentials[fixtureCount][channelCount];
 
-unsigned int clamp16bit(int value){
+unsigned int clamp8bit(int value){
   if(value < 0) {
     value = 0;
   }
-  if(value > 65535){
-    value = 65535;
+  if(value > 255){
+    value = 255;
   }
   return value;
 }
@@ -30,10 +30,8 @@ void setDMX() {
   for(int fixture = 0; fixture < fixtureCount; fixture++) {
     for(int channel = 0; channel < channelCount; channel++) {
       int channelSpace = fixture * channelCount;
-      int highIndex = ((channelSpace + channel) * 2) + 1;
-      int lowIndex = ((channelSpace + channel) * 2) + 2;
-      dmxVals[highIndex] = ((int)currentVals[fixture][channel] & 0xFF00) / 256;
-      dmxVals[lowIndex] = (int)currentVals[fixture][channel] & 0x00FF;
+      int index = (channelSpace + channel) + 1;
+      dmxVals[index] = currentVals[fixture][channel];
     }
   }
 }
@@ -58,7 +56,7 @@ void stepFrame() {
   renderDMX();
 }
 
-void fadeColor(int (&color)[fixtureCount][channelCount], int fadeTime){
+void fadeColor(byte (&color)[fixtureCount][channelCount], int fadeTime){
   Serial.println("fading color");
   for(int fixture = 0; fixture < fixtureCount; fixture++) {
     for(int channel = 0; channel < channelCount; channel++) { 
@@ -86,6 +84,7 @@ void fadeColor(int (&color)[fixtureCount][channelCount], int fadeTime){
   renderDMX();
   delay(frameInterval);
 
+
 }
 
 void setup() {
@@ -102,18 +101,14 @@ void setup() {
   renderDMX(); */
 }
 
-int color1[][3] = {{65534, 65534, 65534}};
-int color2[][3] = {{65534, 32767, 0}};
-int color3[][3] = {{65534, 0, 0}};
+byte color1[][3] = {{255,255,255}};
+byte color2[][3] = {{0,255,0}};
 
 void loop() {
   // put your main code here, to run repeatedly:
-
-  fadeColor(color1, 10);
+  fadeColor(color1, 5);
   delay(1500);
   fadeColor(color2, 30);
   delay(1500); 
-  fadeColor(color3, 15);
-  delay(1500);
 
 }
