@@ -57,7 +57,6 @@ void stepFrame() {
 }
 
 void fadeColor(byte (&color)[fixtureCount][channelCount], int fadeTime){
-  Serial.println("fading color");
   for(int fixture = 0; fixture < fixtureCount; fixture++) {
     for(int channel = 0; channel < channelCount; channel++) { 
       targetVals[fixture][channel] = color[fixture][channel];   
@@ -89,9 +88,6 @@ void fadeColor(byte (&color)[fixtureCount][channelCount], int fadeTime){
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(9600);
-  while(!Serial){};
-  Serial.println("serial initialized");
   /*
   currentVals[0][0] = 65534;
   currentVals[1][0] = 0;
@@ -101,14 +97,26 @@ void setup() {
   renderDMX(); */
 }
 
-byte color1[][3] = {{255,255,255}};
-byte color2[][3] = {{0,255,0}};
+byte white[][3] = {{255,255,255}};
+byte blue[][3] = {{0,0,255}};
+byte magenta[][3] = {{255,0,255}};
+byte green[][3] = {{0,255,0}};
+byte yellowOrange[][3] = {{255, 195, 0}};
+byte redMagenta[][3] = {{255, 0, 128}};
 
 void loop() {
   // put your main code here, to run repeatedly:
-  fadeColor(color1, 5);
-  delay(1500);
-  fadeColor(color2, 30);
-  delay(1500); 
+  fadeColor(white, 0);
+  delay(2500);
+  fadeColor(green, 0);
+  delay(2500);
+  fadeColor(blue, 0);
+  delay(2500);
+  fadeColor(redMagenta, 0);
+  delay(2500);
+  fadeColor(yellowOrange, 0);
+  delay(2500);
+  fadeColor(magenta, 0);
+  delay(2500);
 
 }
