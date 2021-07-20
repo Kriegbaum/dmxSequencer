@@ -1,8 +1,12 @@
-#include<DmxSimple.h>
+#include <Arduino.h>
+#include <DmxOutput.h>
 
-const byte fixtureCount = 1;
-const byte channelCount = 3;
+#define UNIVERSE_LENGTH 512
+DmxOuput dmx;
+uint8_t universe[UNIVERSE_LENGTH + 1];
+
 const unsigned int totalDMX = (fixtureCount * channelCount * 2) + 1;
+const byte channelCount = 3;
 const byte frameRate = 44;
 const unsigned int frameInterval = 1000 / frameRate;
 float dmxVals[totalDMX];
@@ -55,7 +59,7 @@ void stepFrame() {
     }
   }
   setDMX();
-  renderDMX();
+  dmx.write(universe, UNIVERSE_LENGTH);
 }
 
 void fadeColor(int (&color)[fixtureCount][channelCount], int fadeTime){
@@ -83,7 +87,7 @@ void fadeColor(int (&color)[fixtureCount][channelCount], int fadeTime){
   }
 
   setDMX();
-  renderDMX();
+  dmx.write(universe, UNIVERSE_LENGTH);
   delay(frameInterval);
 
 }
@@ -92,14 +96,9 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
   while(!Serial){};
-  Serial.println("serial initialized");
-  /*
-  currentVals[0][0] = 65534;
-  currentVals[1][0] = 0;
-  Serial.println("values set");
-  setDMX();
-  Serial.println("DMX Values set");
-  renderDMX(); */
+  Serial.println("Serial Online..");
+  dmx.begin(0);
+  Serial.println("DMX Online...");
 }
 
 int color1[][3] = {{65534, 65534, 65534}};
@@ -108,6 +107,10 @@ int color3[][3] = {{65534, 0, 0}};
 
 void loop() {
   // put your main code here, to run repeatedly:
+
+  while (dmx.busy()){
+    //Aint got nuffin to do
+  }
 
   fadeColor(color1, 10);
   delay(1500);
