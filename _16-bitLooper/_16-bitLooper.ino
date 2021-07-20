@@ -14,22 +14,6 @@ float currentVals[fixtureCount][channelCount];
 unsigned int targetVals[fixtureCount][channelCount];
 float differentials[fixtureCount][channelCount];
 
-unsigned int clamp16bit(int value){
-  if(value < 0) {
-    value = 0;
-  }
-  if(value > 65535){
-    value = 65535;
-  }
-  return value;
-}
-
-void renderDMX(){
-  for(int d = 1; d < totalDMX; d++) {
-    DmxSimple.write(d, dmxVals[d]);
-  }
-}
-
 void setDMX() {
   for(int fixture = 0; fixture < fixtureCount; fixture++) {
     for(int channel = 0; channel < channelCount; channel++) {
