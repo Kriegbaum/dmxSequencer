@@ -4,18 +4,25 @@
 #define FRAMERATE 44
 #define UNIVERSE_LENGTH 512
 DmxOutput dmx;
+//Universe length +1 because we are going to 1 index this array. First value is dummy
 uint8_t universe[UNIVERSE_LENGTH + 1];
 
+//Number of milliseconds between frames
 const int frameInterval = 1000 / FRAMERATE;
+//Remove?
 int stepStart = 0;
+//Timestamp of the last frame's beginning, used to set frame cadence
 int lastFrame = 0;
+//Where are we in the sequence?
 int sequenceIterator = 0;
 
 uint8_t splitHigh(uint16_t largeNumber){
+  //Return high order byte of a 16 bit value
   return largeNumber / 256;
 }
 
 uint8_t splitLow(uint16_t largeNumber){
+  //Return low order byte of a 16 bit value
   return largeNumber & 0x00FF;
 }
 
@@ -73,11 +80,22 @@ class RGBFixture{
     }
     
     void setColor16(uint16_t color[3], float fadeTime){
+      //Used to initate a colorfade, accepts a 16 bit value
       remainingFrames = getFrameCount(fadeTime);
       for(int i = 0; i < 3; i++){
         targetValues[i] = color[i];
         differentials[i] = (targetValues[i] - currentValues[i]) / remainingFrames;
       }
+    }
+
+     void setColor8(uint16_t color[3], float fadeTime){
+      //Used to initate a colorfade, accepts an 8 bit value and steps it up to 16 bits
+      remainingFrames = getFrameCount(fadeTime);
+      for(int i = 0; i < 3; i++){
+        //We multiply this value in the 8 bit setter to step up to what it should be in a 16 bit scheme
+        targetValues[i] = color[i] * 255;
+        differentials[i] = (targetValues[i] - currentValues[i]) / remainingFrames;
+     }
     }
 
    bool isBusy(){
@@ -116,25 +134,22 @@ class SequenceStep{
     int wait;
     float fadeTime;
     uint16_t color[3];
-    SequenceStep(uint16_t colorIn[3], float fadeTimeIn, int waitIn){
+    SequenceStep(uint16_t red, uint16_t green, uint16_t blue, float fadeTimeIn, int waitIn){
       wait = waitIn * 1000;
       fadeTime = fadeTimeIn * 1000;
-      for(int i = 0; i < 3; i++){
-        color[i] = colorIn[i];
-      }
+      color[0] = red;
+      color[1] = green;
+      color[2] = blue;
     }
 };
 
 RGBFixture fixture;
 
-SequenceStep step1({65534, 65534, 65534}, 5, 5);
-SequenceStep step2({0, 0, 65534}, 5, 5);
-SequenceStep step1({65534, 0, 0}, 5, 5);
+SequenceStep step1(65534, 65534, 65534, 5, 5);
+SequenceStep step2(0, 0, 65534, 5, 5);
+SequenceStep step3(65534, 0, 0, 5, 5);
 
-SequenceStep sequence[];
-sequence[0] = step1;
-sequence[1] = step2;
-sequence[2] = step3;
+SequenceStep *sequence[3];
 
 void setup() {
   // put your setup code here, to run once:
@@ -147,8 +162,12 @@ void setup() {
   }
   Serial.println("DMX Online...");
   fixture.setAddress(1);
-  fixture.setColor16(color1, 15);
   Serial.println("Fixtures initialized...");
+
+  sequence[0] = new SequenceStep(65534, 65534, 65534, 5, 5);
+  sequence[1] = new SequenceStep(0,     0,     65534, 5, 5);
+  sequence[2] = new SequenceStep(65534, 0,     0,     5, 5);
+  fixture.setColor16(sequence[0]->color, sequence[0]->fadeTime);
 }
 
 void loop() {
