@@ -1,80 +1,110 @@
 #include <Arduino.h>
 #include <DmxOutput.h>
 
+#define FRAMERATE 44
 #define UNIVERSE_LENGTH 512
-DmxOuput dmx;
+DmxOutput dmx;
 uint8_t universe[UNIVERSE_LENGTH + 1];
 
-const unsigned int totalDMX = (fixtureCount * channelCount * 2) + 1;
-const byte channelCount = 3;
-const byte frameRate = 44;
-const unsigned int frameInterval = 1000 / frameRate;
-float dmxVals[totalDMX];
-float currentVals[fixtureCount][channelCount];
-unsigned int targetVals[fixtureCount][channelCount];
-float differentials[fixtureCount][channelCount];
-
-void setDMX() {
-  for(int fixture = 0; fixture < fixtureCount; fixture++) {
-    for(int channel = 0; channel < channelCount; channel++) {
-      int channelSpace = fixture * channelCount;
-      int highIndex = ((channelSpace + channel) * 2) + 1;
-      int lowIndex = ((channelSpace + channel) * 2) + 2;
-      dmxVals[highIndex] = ((int)currentVals[fixture][channel] & 0xFF00) / 256;
-      dmxVals[lowIndex] = (int)currentVals[fixture][channel] & 0x00FF;
-    }
-  }
+uint8_t splitHigh(uint16_t largeNumber){
+  return largeNumber & 0xFF00 / 256;
 }
 
-void setDifferentials(float frames) {
-  for(int fixture = 0; fixture < fixtureCount; fixture++) {
-    for(int channel = 0; channel < channelCount; channel++) { 
-      float start = float(currentVals[fixture][channel]);
-      float finish = float(targetVals[fixture][channel]);
-      differentials[fixture][channel] = (finish - start) / frames;
-    }
-  }
+uint8_t splitLow(uint16_t largeNumber){
+  return largeNumber & 0x00FF;
 }
 
-void stepFrame() {
-  for(int fixture = 0; fixture < fixtureCount; fixture++) {
-    for(int channel = 0; channel < channelCount; channel++) { 
-      currentVals[fixture][channel] += differentials[fixture][channel];       
+class RGBFixture{
+  private:
+    int startAddress;
+    float currentValues[3] = {0,0,0};
+    float differentials[3] = {0,0,0};
+    uint16_t targetValues[3] = {0,0,0};
+    int remainingFrames = 0;
+
+    int getFrameCount(float fadeTime) {
+      int frameCount = fadeTime * FRAMERATE;
+      if(frameCount == 0) {
+        return 1;
+      }
+      else {
+        return frameCount;
+      }
     }
-  }
-  setDMX();
-  dmx.write(universe, UNIVERSE_LENGTH);
-}
 
-void fadeColor(int (&color)[fixtureCount][channelCount], int fadeTime){
-  Serial.println("fading color");
-  for(int fixture = 0; fixture < fixtureCount; fixture++) {
-    for(int channel = 0; channel < channelCount; channel++) { 
-      targetVals[fixture][channel] = color[fixture][channel];   
+    void updateSelf(){
+      if(remainingFrames == 1){
+        for(int i = 0; i < 3; i++){
+          currentValues[i] = targetValues[i];
+        }
+      }
+      else if(remainingFrames == 0){
+        return;
+      }
+      else{
+        for(int i = 0; i < 3; i++){
+          currentValues[i] -= differentials[i];
+        }
+      }
     }
-  }
-  
-  float frames = fadeTime * frameRate;
-  setDifferentials(frames);
-  int now;
-  for(int frame = 0; frame < frames - 1; frame++){
-    //now = millis();
-    stepFrame();
-    //while(millis() - now < frameInterval) {}
-    delay(frameInterval);
-  }
 
-  for(int fixture = 0; fixture < fixtureCount; fixture++) {
-    for(int channel = 0; channel < channelCount; channel++) { 
-      currentVals[fixture][channel] = targetVals[fixture][channel];   
+    void updateDMX(){
+      for(int i = 0; i < 3; i ++){
+        universe[i + startAddress] = splitHigh(currentValues[i]);
+        universe[i + startAddress + 1] = splitLow(currentValues[i]);
+      }
     }
-  }
+    
+  public:
+    void setAddress(int address){
+      startAddress = address;
+    }
+    
+    void setColor16(uint16_t color[3], float fadeTime){
+      remainingFrames = getFrameCount(fadeTime);
+      for(int i = 0; i < 3; i++){
+        targetValues[i] = color[i];
+        differentials[i] = (targetValues[i] - currentValues[i]) / remainingFrames;
+      }
+    }
 
-  setDMX();
-  dmx.write(universe, UNIVERSE_LENGTH);
-  delay(frameInterval);
+   bool isBusy(){
+    if(remainingFrames > 0) {
+      return true;
+    }
+    else{
+      return false;
+    }
+   }
 
-}
+   int getRed(){
+    return currentValues[0];
+   }
+   int getGreen(){
+    return currentValues[1];
+   }
+   int getBlue(){
+    return currentValues[2];
+   }
+
+   void tick(){
+    if(remainingFrames < 1) {
+      return;
+    }
+    else{
+      updateSelf();
+      updateDMX();
+      remainingFrames -= 1;
+    }
+   }
+};
+
+RGBFixture fixture;
+
+uint16_t color1[3] = {65534, 65534, 65534};
+uint16_t color2[3] = {65534, 32767, 0};
+uint16_t color3[3] = {65534, 0, 0};
+
 
 void setup() {
   // put your setup code here, to run once:
@@ -82,25 +112,19 @@ void setup() {
   while(!Serial){};
   Serial.println("Serial Online..");
   dmx.begin(0);
+  for(int i = 1; i < UNIVERSE_LENGTH + 1; i++){
+    universe[i] = 0;
+  }
   Serial.println("DMX Online...");
+  fixture.setAddress(1);
+  fixture.setColor16(color3, 1.5);
+  Serial.println("Fixtures initialized...");
 }
-
-int color1[][3] = {{65534, 65534, 65534}};
-int color2[][3] = {{65534, 32767, 0}};
-int color3[][3] = {{65534, 0, 0}};
 
 void loop() {
   // put your main code here, to run repeatedly:
-
-  while (dmx.busy()){
-    //Aint got nuffin to do
-  }
-
-  fadeColor(color1, 10);
-  delay(1500);
-  fadeColor(color2, 30);
-  delay(1500); 
-  fadeColor(color3, 15);
-  delay(1500);
-
+  dmx.write(universe, UNIVERSE_LENGTH);
+  //got nuffin to do while DMX transmits
+  while (dmx.busy()){}
+  delay(1);
 }
