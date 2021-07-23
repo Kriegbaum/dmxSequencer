@@ -7,7 +7,7 @@ DmxOutput dmx;
 uint8_t universe[UNIVERSE_LENGTH + 1];
 
 uint8_t splitHigh(uint16_t largeNumber){
-  return largeNumber & 0xFF00 / 256;
+  return largeNumber / 256;
 }
 
 uint8_t splitLow(uint16_t largeNumber){
@@ -43,15 +43,22 @@ class RGBFixture{
       }
       else{
         for(int i = 0; i < 3; i++){
-          currentValues[i] -= differentials[i];
+          currentValues[i] += differentials[i];
         }
       }
     }
 
     void updateDMX(){
       for(int i = 0; i < 3; i ++){
-        universe[i + startAddress] = splitHigh(currentValues[i]);
-        universe[i + startAddress + 1] = splitLow(currentValues[i]);
+        int high = splitHigh((uint16_t)currentValues[i]);
+        int low  = splitLow((uint16_t)currentValues[i]);
+        universe[(i + startAddress)] = high;
+        universe[(i + startAddress) + 1] = low;
+        Serial.print("Current: "); Serial.println(currentValues[i]);
+        Serial.print("High:    "); Serial.println(high);
+        Serial.print("Low:     "); Serial.println(low);
+        Serial.print("DMX 1:   "); Serial.println(universe[1]);
+        Serial.print("DMX 2:   "); Serial.println(universe[2]);
       }
     }
     
@@ -117,13 +124,14 @@ void setup() {
   }
   Serial.println("DMX Online...");
   fixture.setAddress(1);
-  fixture.setColor16(color3, 1.5);
+  fixture.setColor16(color3, 70);
   Serial.println("Fixtures initialized...");
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   dmx.write(universe, UNIVERSE_LENGTH);
+  fixture.tick();
   //got nuffin to do while DMX transmits
   while (dmx.busy()){}
   delay(1);
