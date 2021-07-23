@@ -66,11 +66,6 @@ class RGBFixture{
         int low  = splitLow((uint16_t)currentValues[i]);
         universe[((i * 2) + startAddress)] = high;
         universe[((i * 2) + startAddress) + 1] = low;
-        Serial.print("Current: "); Serial.println(currentValues[i]);
-        Serial.print("High:    "); Serial.println(high);
-        Serial.print("Low:     "); Serial.println(low);
-        Serial.print("DMX 1:   "); Serial.println(universe[1]);
-        Serial.print("DMX 2:   "); Serial.println(universe[2]);
       }
     }
     
@@ -156,11 +151,13 @@ void setup() {
   Serial.begin(9600);
   while(!Serial){};
   Serial.println("Serial Online..");
+  
   dmx.begin(0);
   for(int i = 1; i < UNIVERSE_LENGTH + 1; i++){
     universe[i] = 0;
   }
   Serial.println("DMX Online...");
+  
   fixture.setAddress(1);
   Serial.println("Fixtures initialized...");
 
@@ -168,13 +165,21 @@ void setup() {
   sequence[1] = new SequenceStep(0,     0,     65534, 5, 5);
   sequence[2] = new SequenceStep(65534, 0,     0,     5, 5);
   fixture.setColor16(sequence[0]->color, sequence[0]->fadeTime);
+  Serial.println("Sequence Initialized...");
 }
 
 void loop() {
   if(not fixture.isBusy()){
-    
+    delay(sequence[sequenceIterator]->wait * 1000);
+    sequenceIterator += 1;
+    if(sequenceIterator > 2) {
+      sequenceIterator = 0;
+    }
+    fixture.setColor16(sequence[sequenceIterator]->color, sequence[sequenceIterator]->fadeTime);
   }
+  
   if(millis() - lastFrame >= frameInterval) {
+    fixture.tick();
     // put your main code here, to run repeatedly:
     dmx.write(universe, UNIVERSE_LENGTH);
     lastFrame = millis();
