@@ -35,7 +35,7 @@ class RGBFixture{
     int remainingFrames = 0;
 
     int getFrameCount(float fadeTime) {
-      int frameCount = fadeTime * FRAMERATE;
+      int frameCount = (fadeTime * FRAMERATE) / 1000;
       if(frameCount == 0) {
         return 1;
       }
@@ -94,7 +94,7 @@ class RGBFixture{
     }
 
    bool isBusy(){
-    if(remainingFrames > 0) {
+    if(remainingFrames >= 0) {
       return true;
     }
     else{
@@ -113,7 +113,7 @@ class RGBFixture{
    }
 
    void tick(){
-    if(remainingFrames < 1) {
+    if(remainingFrames < 0) {
       return;
     }
     else{
@@ -144,12 +144,13 @@ SequenceStep step1(65534, 65534, 65534, 5, 5);
 SequenceStep step2(0, 0, 65534, 5, 5);
 SequenceStep step3(65534, 0, 0, 5, 5);
 
-SequenceStep *sequence[3];
+SequenceStep *sequence[6];
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
-  while(!Serial){};
+  delay(100);
+  //while(!Serial){};
   Serial.println("Serial Online..");
   
   dmx.begin(0);
@@ -161,21 +162,30 @@ void setup() {
   fixture.setAddress(1);
   Serial.println("Fixtures initialized...");
 
-  sequence[0] = new SequenceStep(65534, 65534, 65534, 5, 5);
-  sequence[1] = new SequenceStep(0,     0,     65534, 5, 5);
-  sequence[2] = new SequenceStep(65534, 0,     0,     5, 5);
+  sequence[0] = new SequenceStep(65534, 65534, 65534, 2,   1);
+  sequence[1] = new SequenceStep(65534,     0, 65534, 2,   1);
+  sequence[2] = new SequenceStep(65534, 0,     0,     4,   0);
+  sequence[3] = new SequenceStep(0,     65534, 65534, 7,   2);
+  sequence[4] = new SequenceStep(0,     0,     0,     0.5, 1);
+  sequence[5] = new SequenceStep(65534, 1200,  0,     0.5, 1);
   fixture.setColor16(sequence[0]->color, sequence[0]->fadeTime);
   Serial.println("Sequence Initialized...");
+  stepStart = millis();
 }
 
 void loop() {
   if(not fixture.isBusy()){
-    delay(sequence[sequenceIterator]->wait * 1000);
+    Serial.print("Fade complete in "); Serial.println(millis() - stepStart);
+    Serial.print("Waiting for "); Serial.print(sequence[sequenceIterator]->wait); Serial.println(" milliseconds");
+    delay(sequence[sequenceIterator]->wait);
     sequenceIterator += 1;
-    if(sequenceIterator > 2) {
+    if(sequenceIterator > 5) {
       sequenceIterator = 0;
     }
     fixture.setColor16(sequence[sequenceIterator]->color, sequence[sequenceIterator]->fadeTime);
+    Serial.println();
+    Serial.print("Initiating step "); Serial.println(sequenceIterator);
+    stepStart = millis();
   }
   
   if(millis() - lastFrame >= frameInterval) {
@@ -183,8 +193,8 @@ void loop() {
     // put your main code here, to run repeatedly:
     dmx.write(universe, UNIVERSE_LENGTH);
     lastFrame = millis();
-    //got nuffin to do while DMX transmits
-    while (dmx.busy()){}
   }
-  delay(1);
+  //got nuffin to do while DMX transmits
+  while (dmx.busy()){}
+  //delay(1);
 }
