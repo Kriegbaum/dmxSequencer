@@ -6,6 +6,11 @@
 DmxOutput dmx;
 uint8_t universe[UNIVERSE_LENGTH + 1];
 
+const int frameInterval = 1000 / FRAMERATE;
+int stepStart = 0;
+int lastFrame = 0;
+int sequenceIterator = 0;
+
 uint8_t splitHigh(uint16_t largeNumber){
   return largeNumber / 256;
 }
@@ -52,8 +57,8 @@ class RGBFixture{
       for(int i = 0; i < 3; i ++){
         int high = splitHigh((uint16_t)currentValues[i]);
         int low  = splitLow((uint16_t)currentValues[i]);
-        universe[(i + startAddress)] = high;
-        universe[(i + startAddress) + 1] = low;
+        universe[((i * 2) + startAddress)] = high;
+        universe[((i * 2) + startAddress) + 1] = low;
         Serial.print("Current: "); Serial.println(currentValues[i]);
         Serial.print("High:    "); Serial.println(high);
         Serial.print("Low:     "); Serial.println(low);
@@ -106,12 +111,30 @@ class RGBFixture{
    }
 };
 
+class SequenceStep{
+  public:
+    int wait;
+    float fadeTime;
+    uint16_t color[3];
+    SequenceStep(uint16_t colorIn[3], float fadeTimeIn, int waitIn){
+      wait = waitIn * 1000;
+      fadeTime = fadeTimeIn * 1000;
+      for(int i = 0; i < 3; i++){
+        color[i] = colorIn[i];
+      }
+    }
+};
+
 RGBFixture fixture;
 
-uint16_t color1[3] = {65534, 65534, 65534};
-uint16_t color2[3] = {65534, 32767, 0};
-uint16_t color3[3] = {65534, 0, 0};
+SequenceStep step1({65534, 65534, 65534}, 5, 5);
+SequenceStep step2({0, 0, 65534}, 5, 5);
+SequenceStep step1({65534, 0, 0}, 5, 5);
 
+SequenceStep sequence[];
+sequence[0] = step1;
+sequence[1] = step2;
+sequence[2] = step3;
 
 void setup() {
   // put your setup code here, to run once:
@@ -124,15 +147,20 @@ void setup() {
   }
   Serial.println("DMX Online...");
   fixture.setAddress(1);
-  fixture.setColor16(color3, 70);
+  fixture.setColor16(color1, 15);
   Serial.println("Fixtures initialized...");
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  dmx.write(universe, UNIVERSE_LENGTH);
-  fixture.tick();
-  //got nuffin to do while DMX transmits
-  while (dmx.busy()){}
+  if(not fixture.isBusy()){
+    
+  }
+  if(millis() - lastFrame >= frameInterval) {
+    // put your main code here, to run repeatedly:
+    dmx.write(universe, UNIVERSE_LENGTH);
+    lastFrame = millis();
+    //got nuffin to do while DMX transmits
+    while (dmx.busy()){}
+  }
   delay(1);
 }
