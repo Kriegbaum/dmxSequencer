@@ -171,6 +171,9 @@ void setup() {
   fixture.setColor16(sequence[0]->color, sequence[0]->fadeTime);
   Serial.println("Sequence Initialized...");
   stepStart = millis();
+
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
 }
 
 void loop() {
