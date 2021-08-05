@@ -3,6 +3,7 @@
 
 #define FRAMERATE 44
 #define UNIVERSE_LENGTH 512
+
 DmxOutput dmx;
 //Universe length +1 because we are going to 1 index this array. First value is dummy
 uint8_t universe[UNIVERSE_LENGTH + 1];
@@ -144,7 +145,8 @@ SequenceStep step1(65534, 65534, 65534, 5, 5);
 SequenceStep step2(0, 0, 65534, 5, 5);
 SequenceStep step3(65534, 0, 0, 5, 5);
 
-SequenceStep *sequence[6];
+#define SEQUENCE_STEPS 3
+SequenceStep *sequence[SEQUENCE_STEPS];
 
 void setup() {
   // put your setup code here, to run once:
@@ -161,13 +163,10 @@ void setup() {
   
   fixture.setAddress(1);
   Serial.println("Fixtures initialized...");
-
-  sequence[0] = new SequenceStep(65534, 65534, 65534, 2,   1);
-  sequence[1] = new SequenceStep(65534,     0, 65534, 2,   1);
-  sequence[2] = new SequenceStep(65534, 0,     0,     4,   0);
-  sequence[3] = new SequenceStep(0,     65534, 65534, 7,   2);
-  sequence[4] = new SequenceStep(0,     0,     0,     0.5, 1);
-  sequence[5] = new SequenceStep(65534, 1200,  0,     0.5, 1);
+  sequence[0] = new SequenceStep(255, 150, 000, 10, 3);
+  sequence[1] = new SequenceStep(255, 000, 000, 10, 3);
+  //sequence[2] = new SequenceStep(000, 000, 255, 10, 2);
+  sequence[2] = new SequenceStep(255, 255, 255, 10, 3);
   fixture.setColor16(sequence[0]->color, sequence[0]->fadeTime);
   Serial.println("Sequence Initialized...");
   stepStart = millis();
@@ -182,10 +181,10 @@ void loop() {
     Serial.print("Waiting for "); Serial.print(sequence[sequenceIterator]->wait); Serial.println(" milliseconds");
     delay(sequence[sequenceIterator]->wait);
     sequenceIterator += 1;
-    if(sequenceIterator > 5) {
+    if(sequenceIterator > SEQUENCE_STEPS - 1) {
       sequenceIterator = 0;
     }
-    fixture.setColor16(sequence[sequenceIterator]->color, sequence[sequenceIterator]->fadeTime);
+    fixture.setColor8(sequence[sequenceIterator]->color, sequence[sequenceIterator]->fadeTime);
     Serial.println();
     Serial.print("Initiating step "); Serial.println(sequenceIterator);
     stepStart = millis();
