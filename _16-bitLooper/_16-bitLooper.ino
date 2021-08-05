@@ -163,9 +163,9 @@ void setup() {
   
   fixture.setAddress(1);
   Serial.println("Fixtures initialized...");
+  //SEQUENCE FOR CONE 1, BLUE-PINK
   sequence[0] = new SequenceStep(255, 150, 000, 10, 3);
   sequence[1] = new SequenceStep(255, 000, 000, 10, 3);
-  //sequence[2] = new SequenceStep(000, 000, 255, 10, 2);
   sequence[2] = new SequenceStep(255, 255, 255, 10, 3);
   fixture.setColor16(sequence[0]->color, sequence[0]->fadeTime);
   Serial.println("Sequence Initialized...");
