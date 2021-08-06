@@ -163,7 +163,7 @@ void setup() {
   
   fixture.setAddress(1);
   Serial.println("Fixtures initialized...");
-  //SEQUENCE FOR CONE 4, PURPLE-YELLOW ALTERNATE
+  //SEQUENCE FOR CONE 4, PURPLE-YELLOW ALTERNATE NOW NOT ALTERNATE
   sequence[0] = new SequenceStep(255, 255, 255,  10, 0);
   sequence[1] = new SequenceStep( 10,  10, 255,   8, 3);
   sequence[2] = new SequenceStep(  0,   0, 255,   2, 3);
