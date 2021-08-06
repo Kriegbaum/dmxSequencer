@@ -145,7 +145,7 @@ SequenceStep step1(65534, 65534, 65534, 5, 5);
 SequenceStep step2(0, 0, 65534, 5, 5);
 SequenceStep step3(65534, 0, 0, 5, 5);
 
-#define SEQUENCE_STEPS 4
+#define SEQUENCE_STEPS 5
 SequenceStep *sequence[SEQUENCE_STEPS];
 
 void setup() {
@@ -163,11 +163,12 @@ void setup() {
   
   fixture.setAddress(1);
   Serial.println("Fixtures initialized...");
-  //SEQUENCE FOR CONE 3, YELLOW-PINK-BLUE
+  //SEQUENCE FOR CONE 4, PURPLE-YELLOW
   sequence[0] = new SequenceStep(255, 150, 000, 10, 3);
   sequence[1] = new SequenceStep(255, 000, 255, 10, 3);
-  sequence[2] = new SequenceStep(000, 000, 255, 10, 3);
-  sequence[3] = new SequenceStep(255, 255, 255, 10, 3);
+  sequence[2] = new SequenceStep(010, 000, 255,  8, 0);
+  sequence[3] = new SequenceStep(000, 000, 255,  2, 3);
+  sequence[4] = new SequenceStep(255, 255, 255, 10, 3);
   fixture.setColor16(sequence[0]->color, sequence[0]->fadeTime);
   Serial.println("Sequence Initialized...");
   stepStart = millis();
