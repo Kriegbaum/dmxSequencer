@@ -4,6 +4,11 @@
 #define FRAMERATE 44
 #define UNIVERSE_LENGTH 512
 
+//Pins for operating hardware watchdog
+const int WATCHDOG_BUMP = 27;
+const int WATCHDOG_EN = 28;
+bool watchdogStatus = false;
+
 DmxOutput dmx;
 //Universe length +1 because we are going to 1 index this array. First value is dummy
 uint8_t universe[UNIVERSE_LENGTH + 1];
@@ -25,6 +30,31 @@ uint8_t splitHigh(uint16_t largeNumber){
 uint8_t splitLow(uint16_t largeNumber){
   //Return low order byte of a 16 bit value
   return largeNumber & 0x00FF;
+}
+
+void watchdogBump(){
+  watchdogStatus = !(watchdogStatus);
+  digitalWrite(WATCHDOG_BUMP, watchdogStatus);
+}
+
+void delayWatchdog(int delayTime){
+  int start = millis();
+  int now = millis();
+  while(now - start < delayTime){
+    now = millis();
+    if(now % 50 == 0){
+      watchdogBump();
+    }
+  }
+}
+
+void statusBlink(int blinks){
+  for(int i=0; i<blinks; i++) {
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(10);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(75);
+  }
 }
 
 class RGBFixture{
@@ -149,6 +179,11 @@ SequenceStep step3(65534, 0, 0, 5, 5);
 SequenceStep *sequence[SEQUENCE_STEPS];
 
 void setup() {
+  pinMode(WATCHDOG_BUMP, OUTPUT);
+  pinMode(WATCHDOG_EN, OUTPUT);
+  //Disable watchdog
+  digitalWrite(WATCHDOG_EN, HIGH);
+  digitalWrite(WATCHDOG_BUMP, HIGH);
   // put your setup code here, to run once:
   Serial.begin(9600);
   delay(100);
@@ -173,14 +208,18 @@ void setup() {
   stepStart = millis();
 
   pinMode(LED_BUILTIN, OUTPUT);
+  statusBlink(4);
   digitalWrite(LED_BUILTIN, HIGH);
+  //Enable watchdog
+  digitalWrite(WATCHDOG_EN, LOW);
 }
 
 void loop() {
+  watchdogBump();
   if(not fixture.isBusy()){
     Serial.print("Fade complete in "); Serial.println(millis() - stepStart);
     Serial.print("Waiting for "); Serial.print(sequence[sequenceIterator]->wait); Serial.println(" milliseconds");
-    delay(sequence[sequenceIterator]->wait);
+    delayWatchdog(sequence[sequenceIterator]->wait);
     sequenceIterator += 1;
     if(sequenceIterator > SEQUENCE_STEPS - 1) {
       sequenceIterator = 0;
@@ -189,10 +228,12 @@ void loop() {
     Serial.println();
     Serial.print("Initiating step "); Serial.println(sequenceIterator);
     stepStart = millis();
+    watchdogBump();
   }
   
   if(millis() - lastFrame >= frameInterval) {
     fixture.tick();
+    watchdogBump();
     // put your main code here, to run repeatedly:
     dmx.write(universe, UNIVERSE_LENGTH);
     lastFrame = millis();
