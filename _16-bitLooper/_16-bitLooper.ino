@@ -3,6 +3,7 @@
 
 #define FRAMERATE 44
 #define UNIVERSE_LENGTH 512
+#define DIMMER_MINIMUM 50
 
 DmxOutput dmx;
 //Universe length +1 because we are going to 1 index this array. First value is dummy
@@ -16,6 +17,9 @@ int stepStart = 0;
 int lastFrame = 0;
 //Where are we in the sequence?
 int sequenceIterator = 0;
+// Where is the dimmer at right now?
+float dimmerValue;
+int dimmerPin = A2;
 
 uint8_t splitHigh(uint16_t largeNumber){
   //Return high order byte of a 16 bit value
@@ -25,6 +29,12 @@ uint8_t splitHigh(uint16_t largeNumber){
 uint8_t splitLow(uint16_t largeNumber){
   //Return low order byte of a 16 bit value
   return largeNumber & 0x00FF;
+}
+
+float mapFloat(int inp, int fromLow, int fromHigh){
+  // Takes an input and an upper and lower bound for that input, returns the number in a range 0 to 1
+  int mappedInt = map(inp, fromLow, fromHigh, DIMMER_MINIMUM, 100);
+  return mappedInt * 0.01;
 }
 
 class RGBFixture{
@@ -51,7 +61,7 @@ class RGBFixture{
           currentValues[i] = targetValues[i];
         }
       }
-      else if(remainingFrames == 0){
+      else if(remainingFrames <= 0){
         return;
       }
       else{
@@ -63,8 +73,9 @@ class RGBFixture{
 
     void updateDMX(){
       for(int i = 0; i < 3; i ++){
-        int high = splitHigh((uint16_t)currentValues[i]);
-        int low  = splitLow((uint16_t)currentValues[i]);
+        float dimmedValue = currentValues[i] * dimmerValue;
+        int high = splitHigh((uint16_t)dimmedValue);
+        int low  = splitLow((uint16_t)dimmedValue);
         universe[((i * 2) + startAddress)] = high;
         universe[((i * 2) + startAddress) + 1] = low;
       }
@@ -114,12 +125,17 @@ class RGBFixture{
    }
 
    void tick(){
+    /*
     if(remainingFrames < 0) {
       return;
     }
+    */
+    updateSelf();
+    updateDMX();
+    if(remainingFrames < 0){
+      return;
+    }
     else{
-      updateSelf();
-      updateDMX();
       remainingFrames -= 1;
     }
    }
@@ -170,32 +186,36 @@ void setup() {
   sequence[3] = new SequenceStep( 94, 255,  97,  10, 0);
   sequence[4] = new SequenceStep(255, 150,   0,  10, 3);
   sequence[5] = new SequenceStep(255,   0, 255,  10, 3);
-  fixture.setColor16(sequence[0]->color, sequence[0]->fadeTime);
+  fixture.setColor8(sequence[0]->color, sequence[0]->fadeTime);
   Serial.println("Sequence Initialized...");
   stepStart = millis();
+
+  pinMode(dimmerPin, INPUT);
+  dimmerValue = mapFloat(analogRead(dimmerPin), 0, 1023);
 
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
 }
 
 void loop() {
+  dimmerValue = mapFloat(analogRead(dimmerPin), 0, 1023);
   if(not fixture.isBusy()){
-    Serial.print("Fade complete in "); Serial.println(millis() - stepStart);
-    Serial.print("Waiting for "); Serial.print(sequence[sequenceIterator]->wait); Serial.println(" milliseconds");
-    delay(sequence[sequenceIterator]->wait);
-    sequenceIterator += 1;
-    if(sequenceIterator > SEQUENCE_STEPS - 1) {
-      sequenceIterator = 0;
+    if (millis() - stepStart > (sequence[sequenceIterator]->wait + sequence[sequenceIterator]->fadeTime)){
+      Serial.print("Total time "); Serial.println(millis() - stepStart); Serial.println();
+      sequenceIterator += 1;
+      if(sequenceIterator > SEQUENCE_STEPS - 1) {
+        sequenceIterator = 0;
+      }
+      Serial.print("Initiating step "); Serial.println(sequenceIterator);
+      Serial.print("Fading for "); Serial.print(sequence[sequenceIterator]->fadeTime); Serial.println(" milliseconds");
+      Serial.print("Waiting for "); Serial.print(sequence[sequenceIterator]->wait); Serial.println(" milliseconds");
+      fixture.setColor8(sequence[sequenceIterator]->color, sequence[sequenceIterator]->fadeTime);
+      stepStart = millis();
     }
-    fixture.setColor8(sequence[sequenceIterator]->color, sequence[sequenceIterator]->fadeTime);
-    Serial.println();
-    Serial.print("Initiating step "); Serial.println(sequenceIterator);
-    stepStart = millis();
   }
   
   if(millis() - lastFrame >= frameInterval) {
     fixture.tick();
-    // put your main code here, to run repeatedly:
     dmx.write(universe, UNIVERSE_LENGTH);
     lastFrame = millis();
   }
