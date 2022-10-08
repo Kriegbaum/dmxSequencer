@@ -3,7 +3,7 @@
 
 #define FRAMERATE 44
 #define UNIVERSE_LENGTH 512
-#define DIMMER_MINIMUM 50
+#define DIMMER_MINIMUM 30
 
 DmxOutput dmx;
 //Universe length +1 because we are going to 1 index this array. First value is dummy
